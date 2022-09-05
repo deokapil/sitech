@@ -1,4 +1,5 @@
 import os
+import io
 import boto3
 from botocore.exceptions import ClientError
 from typing import Union, Optional, Tuple
@@ -15,7 +16,7 @@ class S3Service:
         self.client = boto3.client("s3", aws_access_key_id=self.aws_access_key,
                                    aws_secret_access_key=self.aws_secret_key)
 
-    def send_to_s3(self, file_name: str, bucket: str, object_name: str = None) -> Tuple[bool, Optional[str]]:
+    def send_to_s3(self, content: io.BytesIO, bucket: str, object_name: str = None) -> Tuple[bool, Optional[str]]:
         """Upload a file to an S3 bucket.
            :param file_name: File to upload.
            :param bucket: Bucket to upload.
@@ -29,22 +30,35 @@ class S3Service:
             return False, "S3 Configuration Error: S3 Upload Failed"
 
         # If S3 object_name was not specified, use the file name.
-        if object_name is None:
-            object_name = os.path.basename(file_name)
+
         try:
-            self.client.upload_file(file_name, bucket, object_name)
+            self.client.upload_fileobj(content, bucket, object_name)
         except ClientError as e:
             return False, e.response
         return True, None
 
-    def get_from_s3(self, id: str, bucket: str) -> Tuple[bool, Optional[str]]:
+    def get_from_s3_utf8(self, id: str, bucket: str) -> Tuple[Optional[dict], Optional[str]]:
+
+        fbytes, error = self.get_from_s3(id, bucket)
+        if error is not None:
+            return None, error
+        return {"file": fbytes.decode("utf-8")}, None
+
+    def get_from_s3(self, id: str, bucket: str) -> Tuple[Optional[bytes], Optional[str]]:
 
         config_pass = (self.aws_access_key is not None and
                        self.aws_secret_key is not None)
         if not config_pass:
-            return False, "S3 Configuration Error: S3 Upload Failed"
+            return None, "S3 Configuration Error: S3 Upload Failed"
+        try:
+            with io.BytesIO() as f:
+                self.client.download_fileobj(bucket, id, f)
+                f.seek(0)
+                return f.read(), None
+        except ClientError as e:
+            return None, e.response
 
-        return True, None
+
 
     def list_bucket(self, bucket: str, prefix: str = None) -> Tuple[Union[dict, bool], Optional[str]]:
         """
