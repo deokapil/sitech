@@ -1,0 +1,5 @@
+export AWS_ACCESS_KEY=AKIA6RDSUCCW3IGUMHGO
+export AWS_SECRET_ACCESS_KEY=TuanIVwKWTb+tSdPxfmBwl2rKOSF/My2hJgA5xwb
+export AWS_REGION=us-east-1
+export AWS_BUCKET_NAME=sitech-bucket
+export AWS_SAMPLE_BUCKET=sitech-sample
